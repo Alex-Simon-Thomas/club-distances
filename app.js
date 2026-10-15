@@ -4,6 +4,7 @@ import { TYPES, SWINGS, FIELDS, num, esc, codeOf, sorted, visible, activeSwings,
 import { ladder } from "./js/ladder.js";
 import { clubIcon, tag, who, whoTag, arc } from "./js/icons.js";
 import { createStore } from "./js/storage.js";
+import { readBagFile, bagFileText, bagFileName, skippedText, skippedCount, confirmText, plural } from "./js/bagfile.js";
 
 const store = createStore();
 let clubs = store.loadClubs(), mode = "card", lastBest = "";
@@ -199,6 +200,7 @@ function openSettings() {
         <label class="sw"><input type="checkbox" id="set-icons" aria-label="Club icons"><i></i></label></div>
       <div class="set"><div class="l"><b>Ball-flight arc</b><span>A line under each club: carry, then dotted roll to total</span></div>
         <label class="sw"><input type="checkbox" id="set-arc" aria-label="Ball-flight arc"><i></i></label></div>
+      ${bagSection()}
       <div class="saved-note">Saved on this phone.</div>
     </div></div>`;
   syncSettings();
@@ -206,11 +208,68 @@ function openSettings() {
   $("seg-sun").addEventListener("click", () => setPref("sun", true));
   $("set-icons").addEventListener("change", (e) => setPref("icons", e.target.checked));
   $("set-arc").addEventListener("change", (e) => setPref("arc", e.target.checked));
+  wireBagSection();
   $("seg-dark").focus();
 }
 $("settingsBtn").addEventListener("click", openSettings);
 const prefs = { sun: store.pref("sun", false), icons: store.pref("icons", true), arc: store.pref("arc", false) };
 applySun(prefs.sun);
+
+/* ---------- Your bag: Export bag and Import bag (ADR 0001) ---------- */
+const lastExportText = () => {
+  const at = store.lastExport();
+  return "Last exported: " + (at ? new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : "never");
+};
+function bagSection() {
+  return `<div class="bag"><div class="l"><b>Your bag</b><span>Saved only on this phone. Export a copy to back it up or move it.</span></div>
+    <div class="bag-acts" id="bagActs"><button class="bag-btn" id="exportBtn">Export bag</button><button class="bag-btn" id="importBtn">Import bag</button></div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+    <div class="bag-last" id="lastExport">${lastExportText()}</div>
+    <div class="bag-msg" id="bagMsg" aria-live="polite"></div></div>`;
+}
+function bagMsg(text, isErr) { $("bagMsg").textContent = text; $("bagMsg").classList.toggle("err", !!isErr); }
+function exportBag() {
+  const url = URL.createObjectURL(new Blob([bagFileText(clubs)], { type: "application/json" }));
+  const a = Object.assign(document.createElement("a"), { href: url, download: bagFileName() });
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  store.setLastExport();
+  $("lastExport").textContent = lastExportText();
+  bagMsg(`Exported ${plural(clubs.length, "club")}.`);
+}
+// Asks before the file's clubs replace the bag. Cancel leaves the bag as it is.
+function confirmImport({ clubs: incoming, skipped }) {
+  const acts = $("bagActs"), keep = acts.innerHTML;
+  acts.className = "bag-confirm";
+  acts.innerHTML = `<p>${esc(confirmText(clubs.length, incoming.length))}</p>
+    <div class="acts"><button class="bag-cancel" id="importCancel">Cancel</button><button class="save" id="importOk">${clubs.length ? "Replace" : "Load"}</button></div>`;
+  const restore = () => { acts.className = "bag-acts"; acts.innerHTML = keep; wireBagButtons(); $("importBtn").focus(); };
+  $("importCancel").addEventListener("click", () => { restore(); bagMsg("Import cancelled. Your bag is unchanged."); });
+  $("importOk").addEventListener("click", () => {
+    try { changeBag(() => store.replaceClubs(incoming)); } catch { restore(); return bagMsg("Couldn't save on this phone. Your bag is unchanged.", true); }
+    restore();
+    const n = skippedCount(skipped);
+    bagMsg(`Imported ${plural(incoming.length, "club")}.` + (n ? ` ${n} skipped: ${skippedText(skipped)}.` : ""));
+    setStatus("Bag imported");
+  });
+  $("importOk").focus();
+}
+async function importBag(file) {
+  bagMsg("");
+  const read = readBagFile(await file.text());
+  if (read.error) return bagMsg(read.error, true);
+  confirmImport(read);
+}
+function wireBagButtons() {
+  $("exportBtn").addEventListener("click", exportBag);
+  $("importBtn").addEventListener("click", () => $("importFile").click());
+}
+function wireBagSection() {
+  wireBagButtons();
+  $("importFile").addEventListener("change", (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) importBag(f); });
+}
+// Asks the browser to keep the bag when it clears site data. It may say no; the app works either way.
+if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 
 function setTarget(v) {
   $("target").value = v ? v : "";

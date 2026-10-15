@@ -120,6 +120,19 @@ h1 span { color: var(--amber); }
 .seg { display: flex; background: var(--raise); border-radius: 10px; padding: 3px; flex: 0 0 auto; }
 .seg button { border: 0; background: transparent; padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--muted); }
 .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.bag { padding: 14px 0; border-top: 1px solid var(--line-soft); }
+.bag .l b { display: block; font-size: 15px; font-weight: 600; }
+.bag .l span { font-size: 12px; color: var(--muted); }
+.bag-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.bag-btn { border: 1px solid var(--line); background: var(--raise); color: var(--ink); border-radius: 12px; padding: 11px 8px; font-weight: 600; }
+.bag-confirm { margin-top: 12px; background: var(--raise); border: 1px solid var(--amber); border-radius: 12px; padding: 12px; }
+.bag-confirm p { margin: 0 0 10px; font-weight: 600; }
+.bag-confirm .acts { justify-content: flex-end; }
+.bag-cancel { border: 0; background: none; color: var(--ink); font-size: 14px; padding: 8px 6px; }
+.bag-last { font-size: 12px; color: var(--muted); margin-top: 8px; }
+.bag-msg { font-size: 13px; margin-top: 6px; }
+.bag-msg:empty { display: none; }
+.bag-msg.err { color: var(--danger); }
 .saved-note { font-size: 12px; color: var(--muted); padding-top: 12px; border-top: 1px solid var(--line-soft); }
 .clubicon { width: 42px; height: 42px; flex: 0 0 auto; display: block; }
 .who { min-width: 0; }

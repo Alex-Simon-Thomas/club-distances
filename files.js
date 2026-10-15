@@ -5,6 +5,7 @@ self.APP_FILES = [
   "index.html",
   "app.css",
   "app.js",
+  "js/bagfile.js",
   "js/clubs.js",
   "js/icons.js",
   "js/ladder.js",

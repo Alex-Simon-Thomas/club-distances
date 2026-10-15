@@ -47,6 +47,12 @@ export function createStore(storage = globalThis.localStorage) {
     restoreClub(club) {
       saveClubs([...loadClubs().filter(c => c.id !== club.id), club]);
     },
+    // Import bag: the file's clubs replace the whole bag.
+    replaceClubs(list) { saveClubs(list); },
+
+    // When Export bag last ran, or null if never.
+    lastExport() { const v = Number(get("bag-last-export")); return v > 0 ? v : null; },
+    setLastExport(now = Date.now()) { set("bag-last-export", String(now)); },
 
     // Settings: "1" on, "0" off; unset falls back to the default.
     pref(k, dflt) { const v = get("bag-" + k); return v === null || v === "" ? dflt : v === "1"; },
