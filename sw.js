@@ -4,8 +4,11 @@ importScripts("files.js");
 
 const CACHE = "club-distances";
 
+// Every network read skips the browser's HTTP cache (GitHub Pages lets it keep files for
+// 10 minutes), so a pushed version is picked up on the next online launch, not minutes later.
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(self.APP_FILES)));
+  const fresh = self.APP_FILES.map((f) => new Request(f, { cache: "reload" }));
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(fresh)));
 });
 
 self.addEventListener("activate", (event) => {
@@ -23,7 +26,7 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const cached = await cache.match(request, { ignoreSearch: true });
-      const refresh = fetch(request)
+      const refresh = fetch(request, { cache: "no-cache" })
         .then((response) => {
           if (response.ok) cache.put(request, response.clone());
           return response;

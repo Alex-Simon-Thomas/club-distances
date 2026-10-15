@@ -350,7 +350,8 @@ applyUnits();
 
 render();
 
-// Registers the service worker so the app opens with no signal.
+// Registers the service worker so the app opens with no signal. updateViaCache "none" makes
+// the update check read sw.js and files.js from the server, so a new file list is seen at once.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").catch((err) => console.error("Service worker failed to register", err));
+  navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch((err) => console.error("Service worker failed to register", err));
 }
