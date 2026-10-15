@@ -15,12 +15,35 @@
   <link rel="stylesheet" href="app.css">
 </head>
 <body>
-  <main class="wrap">
-    <h1>Club Distances</h1>
-    <p>Your bag, your carry distances, the right club for the shot.</p>
-    <p class="muted">This is an early build. The full card arrives in the next update.</p>
-    <p class="muted" id="offline-state"></p>
-  </main>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1>My <span>Bag</span></h1>
+        <div class="status" id="status" aria-live="polite"></div>
+      </div>
+      <div class="hbtns">
+        <button class="pill iconbtn" id="settingsBtn" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></svg></button>
+        <button class="pill" id="manageBtn">Edit</button>
+      </div>
+    </header>
+
+    <section class="finder" id="finder" aria-label="Distance finder">
+      <div class="f-lab"><span>Distance to pin</span><button id="clearBtn" hidden>Clear</button></div>
+      <div class="stepper">
+        <button class="step" data-step="-5" aria-label="Minus 5 meters">−5</button>
+        <button class="step" data-step="-1" aria-label="Minus 1 meter">−1</button>
+        <label class="tgt"><input id="target" type="number" inputmode="numeric" min="0" max="400" placeholder="Set" aria-label="Distance to pin in meters"><span>m</span></label>
+        <button class="step" data-step="1" aria-label="Plus 1 meter">+1</button>
+        <button class="step" data-step="5" aria-label="Plus 5 meters">+5</button>
+      </div>
+    </section>
+    <div class="chips" id="chips" aria-live="polite"></div>
+
+    <main id="view"></main>
+  </div>
+
+  <div id="sheetRoot"></div>
+  <div id="toastRoot"></div>
   <script type="module" src="app.js"></script>
 </body>
 </html>

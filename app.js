@@ -1,9 +1,236 @@
+// The card, edit mode, the club editor and Settings. Ported from the prototype (artifact v7),
+// with the bag saved in this phone's browser instead of window.claude.
+import { TYPES, SWINGS, FIELDS, num, esc, codeOf, sorted, visible, activeSwings, options, matches, baseDistance, nextType } from "./js/clubs.js";
+import { ladder } from "./js/ladder.js";
+import { clubIcon, tag, who, whoTag, arc } from "./js/icons.js";
+import { createStore } from "./js/storage.js";
+
+const store = createStore();
+let clubs = store.loadClubs(), mode = "card", lastBest = "";
+const $ = (id) => document.getElementById(id);
+
+let statusTimer;
+function setStatus(t, sticky) { clearTimeout(statusTimer); $("status").textContent = t; if (t && !sticky) statusTimer = setTimeout(() => { $("status").textContent = ""; }, 2500); }
+
+const mark = (c) => prefs.icons ? clubIcon(c) : tag(c);
+const label = (c) => prefs.icons ? who(c) : whoTag(c);
+function target() { const t = Math.round(Number($("target").value)); return t > 0 ? t : null; }
+
+/* ---------- Finder ---------- */
+function renderChips(m, t) {
+  $("clearBtn").hidden = !t;
+  const box = $("chips");
+  if (!t || mode === "manage") { box.innerHTML = ""; return; }
+  if (!m.length) { box.innerHTML = `<div class="hint">Add carry distances to see which club fits.</div>`; return; }
+  const bestKey = m[0].c.id + m[0].k;
+  box.innerHTML = m.map((o, i) => {
+    const d = o.d === 0 ? "exact" : (o.d > 0 ? "+" : "−") + Math.abs(o.d);
+    return `<div class="chip${i ? "" : " best"}${!i && bestKey !== lastBest ? " pulse" : ""}">
+      <div class="cl">${esc(codeOf(o.c))} ${o.l}</div>
+      <div class="mv"><b>${o.v} m</b><span>${d}</span></div>
+      <div class="br">${esc(o.c.name || o.c.type)}</div></div>`;
+  }).join("");
+  lastBest = bestKey;
+}
+
+/* ---------- Views ---------- */
+function renderCard() {
+  const view = $("view"), t = target(), opts = options(clubs), m = matches(opts, t);
+  renderChips(m, t);
+  const vis = visible(clubs), hiddenCount = clubs.length - vis.length;
+  if (!vis.length) {
+    view.innerHTML = `<div class="empty"><strong>${clubs.length ? "No clubs to show" : "Bag is empty"}</strong>${clubs.length
+      ? "Clubs show here once they're in the bag and have at least one distance."
+      : "Add your first club and its Map My Bag carry to get started."}</div><button class="add" data-add>+ Add club</button>`;
+    return;
+  }
+  const sw = activeSwings(vis);
+  const scale = Math.max(...vis.map(c => Math.max(num(c.fullTotal) ?? 0, num(c.fullCarry) ?? 0))) * 1.06 || 250;
+  const hit = new Map(m.map((o, i) => [o.c.id + o.k, i ? "hit" : "hit best"]));
+  const rows = vis.map(c => {
+    const cells = sw.map(([k]) => {
+      const cv = num(c[k + "Carry"]), tv = num(c[k + "Total"]);
+      if (cv === null && tv === null) return `<div class="cell e"><div class="c">·</div></div>`;
+      return `<div class="cell ${hit.get(c.id + k) || ""}"><div class="c">${cv ?? "–"}</div>${tv !== null ? `<div class="t">${tv} tot</div>` : ""}</div>`;
+    }).join("");
+    return `<div class="row${prefs.arc ? " has-arc" : ""}"><div class="nm">${mark(c)}${label(c)}</div>${cells}${prefs.arc ? arc(c, scale) : ""}</div>`;
+  }).join("");
+  view.style.setProperty("--n", sw.length);
+  view.innerHTML = `${ladder(opts, m, t)}
+    <div class="cols"><span>Club</span>${sw.map(([, l]) => `<span>${l}</span>`).join("")}</div>${rows}
+    <div class="foot">Carry in meters, total below it. Columns appear once a club has a distance for that swing.${hiddenCount ? ` ${hiddenCount} club${hiddenCount > 1 ? "s" : ""} not shown (out of the bag or no distances).` : ""} <button data-manage>Edit clubs</button></div>`;
+}
+
+function renderManage() {
+  const view = $("view"), list = sorted(clubs);
+  view.innerHTML = `<div class="l-cap" style="margin:14px 0 4px">All clubs · tap one to edit</div>` +
+    (list.length ? list.map(c => {
+      const fc = num(c.fullCarry);
+      return `<div class="mrow${c.inBag === false ? " out" : ""}" role="button" tabindex="0" data-open="${esc(c.id)}">
+        ${mark(c)}
+        <div class="info">${label(c)}</div>
+        ${c.inBag === false ? `<span class="tag">Out of bag</span>` : ""}
+        <div class="meta">${fc !== null ? fc + " m" : "no distances"}</div><span class="chev" aria-hidden="true">›</span></div>`;
+    }).join("") : `<div class="empty"><strong>Bag is empty</strong>Add your first club below.</div>`) +
+    `<button class="add" data-add>+ Add club</button>`;
+}
+
+function render() {
+  $("finder").hidden = mode === "manage";
+  mode === "manage" ? (renderChips([], null), renderManage()) : renderCard();
+}
+
+function setMode(m) {
+  mode = m;
+  $("manageBtn").textContent = m === "manage" ? "Done" : "Edit";
+  $("manageBtn").classList.toggle("on", m === "manage");
+  render();
+  window.scrollTo(0, 0);
+}
+
+// Every change to the bag goes through here: save on the phone, then redraw.
+function changeBag(fn) {
+  fn();
+  clubs = store.loadClubs();
+  render();
+}
+
+/* ---------- Sheet ---------- */
+let sheetFor = null, lastFocus = null;
+function openSheet(id) {
+  const c = id ? clubs.find(x => x.id === id) : { type: nextType(clubs), name: "", inBag: true };
+  if (!c) return;
+  sheetFor = id || null; lastFocus = document.activeElement;
+  const opts = TYPES.map(([t]) => `<option${t === c.type ? " selected" : ""}>${t}</option>`).join("");
+  const grid = SWINGS.map(([k, l]) => `<div class="rl">${l}</div>` + ["Carry", "Total"].map(s =>
+    `<input type="number" inputmode="numeric" min="0" max="400" id="f-${k}${s}" aria-label="${l} ${s.toLowerCase()} in meters" placeholder="add" value="${num(c[k + s]) ?? ""}">`).join("")).join("");
+  $("sheetRoot").innerHTML = `<div class="dim" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title"><div class="sheet-in">
+      <div class="grab"></div>
+      <div class="sh-h"><div><div class="k" id="sh-title">${id ? esc(c.type) : "New club"}</div><div class="b">${id ? esc(c.name || "No name") : "Enter what you know. Empty boxes stay hidden on the card."}</div></div>
+        <button class="x" data-close aria-label="Close">×</button></div>
+      <div class="fld">
+        <label><small>Type</small><select id="f-type">${opts}</select></label>
+        <label><small>Name or brand</small><input id="f-name" type="text" maxlength="40" placeholder="e.g. Ping" value="${esc(c.name)}"></label>
+      </div>
+      <div class="g3"><span></span><span class="h">Carry</span><span class="h">Total</span>${grid}</div>
+      <div class="sh-f">
+        <label class="sw"><input type="checkbox" id="f-inBag"${c.inBag !== false ? " checked" : ""}><i></i>In bag today</label>
+        <div class="acts">${id ? `<button class="del" id="delBtn">Delete</button>` : ""}<button class="save" id="saveBtn">Save</button></div>
+      </div>
+      <div class="err" id="sheetErr" aria-live="polite"></div>
+    </div></div>`;
+  $("f-type").focus();
+  $("saveBtn").addEventListener("click", saveSheet);
+  if (id) $("delBtn").addEventListener("click", deleteClub);
+}
+function closeSheet() { $("sheetRoot").innerHTML = ""; sheetFor = null; if (lastFocus && lastFocus.focus && lastFocus.isConnected) lastFocus.focus(); }
+
+function saveSheet() {
+  const data = { type: $("f-type").value, name: $("f-name").value.trim(), inBag: $("f-inBag").checked };
+  for (const f of FIELDS) { const raw = $("f-" + f).value, n = Math.round(Number(raw)); data[f] = raw === "" || !(n > 0) ? null : Math.min(n, 400); }
+  $("sheetErr").textContent = "";
+  try {
+    changeBag(() => sheetFor ? store.updateClub(sheetFor, data) : store.addClub(data));
+    setStatus("Saved"); closeSheet();
+  } catch {
+    $("sheetErr").textContent = "Couldn't save on this phone. Check the browser's storage settings and try again.";
+  }
+}
+
+let toastTimer;
+function toast(msg, actionLabel, action) {
+  clearTimeout(toastTimer);
+  $("toastRoot").innerHTML = `<div class="toast" role="status"><span>${esc(msg)}</span>${actionLabel ? `<button id="toastAct">${actionLabel}</button>` : ""}</div>`;
+  if (actionLabel) $("toastAct").addEventListener("click", () => { $("toastRoot").innerHTML = ""; action(); });
+  toastTimer = setTimeout(() => { $("toastRoot").innerHTML = ""; }, 7000);
+}
+
+function deleteClub() {
+  const c = clubs.find(x => x.id === sheetFor);
+  if (!c) return;
+  try {
+    changeBag(() => store.deleteClub(c.id));
+    closeSheet();
+    toast(`${c.type}${c.name ? " · " + c.name : ""} deleted`, "Undo", () => {
+      try { changeBag(() => store.restoreClub(c)); setStatus("Restored"); } catch { setStatus("Couldn't restore the club.", true); }
+    });
+  } catch { $("sheetErr").textContent = "Couldn't delete. Try again."; }
+}
+
+/* ---------- Events ---------- */
+document.addEventListener("click", (e) => {
+  const t = e.target;
+  if (t.closest("[data-close]")) return closeSheet();
+  if (t.closest("[data-add]")) return openSheet(null);
+  if (t.closest("[data-manage]")) return setMode("manage");
+  const o = t.closest("[data-open]"); if (o) return openSheet(o.dataset.open);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("sheetRoot").innerHTML) closeSheet();
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-open]")) { e.preventDefault(); openSheet(e.target.dataset.open); }
+});
+$("manageBtn").addEventListener("click", () => setMode(mode === "manage" ? "card" : "manage"));
+// Another tab of the app changed the bag: show the same bag here.
+window.addEventListener("storage", (e) => { if (e.key === null || e.key === "bag-clubs") { clubs = store.loadClubs(); render(); } });
+
+/* ---------- Settings (saved on this phone) ---------- */
+function applySun(on) { if (on) document.documentElement.dataset.sun = "1"; else delete document.documentElement.dataset.sun; }
+function setPref(k, v) {
+  prefs[k] = v; store.setPref(k, v);
+  if (k === "sun") applySun(v);
+  render(); syncSettings();
+}
+function syncSettings() {
+  if (!$("set-icons")) return;
+  $("seg-dark").setAttribute("aria-pressed", prefs.sun ? "false" : "true");
+  $("seg-sun").setAttribute("aria-pressed", prefs.sun ? "true" : "false");
+  $("set-icons").checked = prefs.icons; $("set-arc").checked = prefs.arc;
+}
+function openSettings() {
+  lastFocus = document.activeElement; sheetFor = null;
+  $("sheetRoot").innerHTML = `<div class="dim" data-close></div>
+    <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="set-title"><div class="sheet-in">
+      <div class="grab"></div>
+      <div class="sh-h"><div class="k" id="set-title">Settings</div><button class="x" data-close aria-label="Close">×</button></div>
+      <div class="set"><div class="l"><b>Screen</b><span>Sun is high contrast for bright daylight</span></div>
+        <div class="seg" role="group" aria-label="Screen"><button id="seg-dark">Dark</button><button id="seg-sun">Sun</button></div></div>
+      <div class="set"><div class="l"><b>Club icons</b><span>Off shows coloured club tiles instead</span></div>
+        <label class="sw"><input type="checkbox" id="set-icons" aria-label="Club icons"><i></i></label></div>
+      <div class="set"><div class="l"><b>Ball-flight arc</b><span>A line under each club: carry, then dotted roll to total</span></div>
+        <label class="sw"><input type="checkbox" id="set-arc" aria-label="Ball-flight arc"><i></i></label></div>
+      <div class="saved-note">Saved on this phone.</div>
+    </div></div>`;
+  syncSettings();
+  $("seg-dark").addEventListener("click", () => setPref("sun", false));
+  $("seg-sun").addEventListener("click", () => setPref("sun", true));
+  $("set-icons").addEventListener("change", (e) => setPref("icons", e.target.checked));
+  $("set-arc").addEventListener("change", (e) => setPref("arc", e.target.checked));
+  $("seg-dark").focus();
+}
+$("settingsBtn").addEventListener("click", openSettings);
+const prefs = { sun: store.pref("sun", false), icons: store.pref("icons", true), arc: store.pref("arc", false) };
+applySun(prefs.sun);
+
+function setTarget(v) {
+  $("target").value = v ? v : "";
+  store.saveTarget(v);
+  renderCard();
+}
+document.querySelectorAll("[data-step]").forEach(b => b.addEventListener("click", () => {
+  const t = target();
+  setTarget(t ? Math.max(1, Math.min(400, t + Number(b.dataset.step))) : baseDistance(clubs));
+}));
+$("target").addEventListener("input", () => setTarget(target()));
+$("target").addEventListener("blur", () => { if ($("target").value) $("target").value = target() ?? ""; });
+$("clearBtn").addEventListener("click", () => setTarget(null));
+try { new ResizeObserver(() => document.documentElement.style.setProperty("--dock-h", $("finder").offsetHeight + "px")).observe($("finder")); } catch {}
+const savedTarget = store.loadTarget();
+if (savedTarget) $("target").value = savedTarget;
+
+render();
+
 // Registers the service worker so the app opens with no signal.
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js").then(
-    () => navigator.serviceWorker.ready.then(() => {
-      document.getElementById("offline-state").textContent = "Ready to use offline.";
-    }),
-    (err) => console.error("Service worker failed to register", err),
-  );
+  navigator.serviceWorker.register("sw.js").catch((err) => console.error("Service worker failed to register", err));
 }
