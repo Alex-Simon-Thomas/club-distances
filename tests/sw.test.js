@@ -19,3 +19,7 @@ test("background refresh revalidates with the server", () => {
 test("the update check skips the HTTP cache for sw.js and files.js", () => {
   assert.match(read("app.js"), /register\("sw\.js", \{ updateViaCache: "none" \}\)/);
 });
+
+test("the cache name carries the release version, so a push installs as a new version", () => {
+  assert.match(read("sw.js"), /const VERSION = "\d+\.\d+\.\d+";\nconst CACHE = `club-distances-\$\{VERSION\}`;/);
+});

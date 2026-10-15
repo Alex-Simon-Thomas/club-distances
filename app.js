@@ -2,7 +2,7 @@
 // with the bag saved in this phone's browser instead of window.claude.
 import { TYPES, SWINGS, FIELDS, num, esc, codeOf, sorted, visible, activeSwings, options, matches, baseDistance, nextType } from "./js/clubs.js";
 import { ladder } from "./js/ladder.js";
-import { clubIcon, tag, who, whoTag, arc } from "./js/icons.js";
+import { clubIcon, tag, who, whoTag, arc, arcScale } from "./js/icons.js";
 import { createStore } from "./js/storage.js";
 import { readBagFile, bagFileText, bagFileName, skippedText, skippedCount, confirmText, plural } from "./js/bagfile.js";
 import { UNITS, toShown, toStored, inUnits, storedField } from "./js/units.js";
@@ -56,7 +56,7 @@ function renderCard() {
     return;
   }
   const sw = activeSwings(vis);
-  const scale = Math.max(...vis.map(c => Math.max(num(c.fullTotal) ?? 0, num(c.fullCarry) ?? 0))) * 1.06 || 250;
+  const scale = arcScale(vis);
   const hit = new Map(m.map((o, i) => [o.c.id + o.k, i ? "hit" : "hit best"]));
   const rows = vis.map(c => {
     const cells = sw.map(([k]) => {
@@ -241,7 +241,7 @@ function openSettings() {
         <div class="seg" role="group" aria-label="On a tie"><button id="seg-longer">Longer</button><button id="seg-shorter">Shorter</button></div></div>
       <div class="set"><div class="l"><b>Club icons</b><span>Off shows coloured club tiles instead</span></div>
         <label class="sw"><input type="checkbox" id="set-icons" aria-label="Club icons"><i></i></label></div>
-      <div class="set"><div class="l"><b>Ball-flight arc</b><span>A line under each club: carry, then dotted roll to total</span></div>
+      <div class="set"><div class="l"><b>Ball-flight arc</b><span>An arc per swing under each club: carry, then dotted roll to total</span></div>
         <label class="sw"><input type="checkbox" id="set-arc" aria-label="Ball-flight arc"><i></i></label></div>
       ${bagSection()}
       <div class="saved-note">Settings are saved on this phone.</div>

@@ -25,6 +25,7 @@
   --g-wedge: #6ee7b7;
   --g-other: #9fb0c0;
   --shadow: rgba(0,0,0,.55);
+  --arc-tq: .55; --arc-half: .35;
   --display: "Oxanium", "Bahnschrift", "Arial Narrow", sans-serif;
   --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   color-scheme: dark;
@@ -34,6 +35,7 @@
   --ink: #05080b; --num: #000000; --muted: #2f3b47; --faint: #8794a1;
   --amber: #ffb000; --amber-ink: #000000; --amber-soft: rgba(255,176,0,.28); --glow: transparent; --danger: #b3261e;
   --g-wood: #0069b4; --g-hybrid: #5b21b6; --g-iron: #1f2937; --g-wedge: #046c4e; --g-other: #4b5563; --shadow: rgba(0,0,0,.18);
+  --arc-tq: .7; --arc-half: .5;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -111,6 +113,8 @@ h1 span { color: var(--amber); }
 .nm1 { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .arc { grid-column: 1 / -1; display: block; width: 100%; height: 22px; margin-top: 2px; }
 .row.has-arc { padding-bottom: 2px; }
+.arc .arc-tq { opacity: var(--arc-tq); }
+.arc .arc-half { opacity: var(--arc-half); }
 .iconbtn { width: 36px; height: 34px; padding: 0; justify-content: center; }
 .iconbtn svg { width: 18px; height: 18px; }
 .set { padding: 14px 0; border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; gap: 14px; }

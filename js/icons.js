@@ -1,5 +1,5 @@
 // Club pictures: metal-render icons, the coloured tile shown with icons off, and the ball-flight arc.
-import { GCOL, esc, num, codeOf, groupOf } from "./clubs.js";
+import { GCOL, SWINGS, FIELDS, esc, num, codeOf, groupOf } from "./clubs.js";
 
 /* Metal-render club icons: one drawing per family, face-on, shaded. Group colour shows as the ferrule. */
 const KIND = (c) => c.type === "Driver" ? "driver" : /Wood$/.test(c.type) ? "fairway" : ({ hybrid: "hybrid", iron: "iron", wedge: "wedge" })[groupOf(c)] || "ball";
@@ -56,13 +56,28 @@ export function who(c) { return `<div class="who"><div class="code">${esc(codeOf
 export function whoTag(c) { return `<div class="who"><div class="nm1">${esc(c.name || c.type)}</div>${c.name ? `<div class="nm2">${esc(c.type)}</div>` : ""}</div>`; }
 
 const ARC_H = { wood: 8, hybrid: 11, iron: 14, wedge: 19, other: 12 };
+// Each swing's arc peaks lower than full (Style A, nested and fainter). Opacity lives in app.css,
+// so the Sun screen can use stronger values.
+const ARC_SWING = { full: { h: 1, w: 1.6, dot: 2.2 }, tq: { h: .75, w: 1.2, dot: 1.7 }, half: { h: .5, w: 1, dot: 1.4 } };
+// The arc scale covers every number drawn on the card: carries and totals for every swing.
+export function arcScale(clubs) { return Math.max(0, ...clubs.flatMap(c => FIELDS.map(f => num(c[f]) ?? 0))) * 1.06 || 250; }
+// What gets drawn under one club: an arc per swing with a carry, with the roll to total when it's longer.
+export function arcSwings(c, scale) {
+  const sx = (v) => Math.min(298, (v / scale) * 300);
+  return SWINGS.flatMap(([k]) => {
+    const carry = num(c[k + "Carry"]), total = num(c[k + "Total"]);
+    if (carry === null) return [];
+    const x1 = sx(carry), x2 = total !== null ? Math.max(x1, sx(total)) : x1;
+    return [{ k, x1, x2, peak: ARC_H[groupOf(c)] * 2 * ARC_SWING[k].h, roll: x2 > x1 }];
+  });
+}
 export function arc(c, scale) {
-  const carry = num(c.fullCarry), total = num(c.fullTotal), g = groupOf(c), col = GCOL[g];
+  const col = GCOL[groupOf(c)];
   const base = `<line x1="0" y1="20" x2="300" y2="20" style="stroke:var(--line)" stroke-width="1" vector-effect="non-scaling-stroke"/>`;
-  if (carry === null && total === null) return `<svg class="arc" viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true">${base}</svg>`;
-  const sx = (v) => Math.min(298, (v / scale) * 300), x1 = sx(carry ?? total), x2 = total ? sx(total) : x1;
-  return `<svg class="arc" viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true">${base}
-    ${carry !== null ? `<path d="M2 20Q${(x1 * .55).toFixed(1)} ${20 - ARC_H[g] * 2} ${x1.toFixed(1)} 20" fill="none" style="stroke:${col}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>` : ""}
-    ${x2 > x1 ? `<line x1="${x1.toFixed(1)}" y1="20" x2="${x2.toFixed(1)}" y2="20" style="stroke:${col}" stroke-width="2" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>` : ""}
-    <circle cx="${x2.toFixed(1)}" cy="20" r="2.2" style="fill:${col}"/></svg>`;
+  // Fainter swings first, so the full arc sits on top.
+  const drawn = arcSwings(c, scale).reverse().map(({ k, x1, x2, peak, roll }) => `<g class="arc-${k}">
+    <path d="M2 20Q${(x1 * .55).toFixed(1)} ${(20 - peak).toFixed(1)} ${x1.toFixed(1)} 20" fill="none" style="stroke:${col}" stroke-width="${ARC_SWING[k].w}" vector-effect="non-scaling-stroke"/>
+    ${roll ? `<line x1="${x1.toFixed(1)}" y1="20" x2="${x2.toFixed(1)}" y2="20" style="stroke:${col}" stroke-width="${ARC_SWING[k].w + .4}" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>` : ""}
+    <circle cx="${x2.toFixed(1)}" cy="20" r="${ARC_SWING[k].dot}" style="fill:${col}"/></g>`).join("");
+  return `<svg class="arc" viewBox="0 0 300 22" preserveAspectRatio="none" aria-hidden="true">${base}${drawn}</svg>`;
 }
