@@ -1,0 +1,7 @@
+#!/bin/sh
+# Runs the tests before every commit and blocks the commit if one fails.
+# Enable once per clone: git config core.hooksPath .githooks
+node --test "tests/*.test.js" || {
+  echo "Tests failed; commit blocked." >&2
+  exit 1
+}
