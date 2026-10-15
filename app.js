@@ -5,6 +5,7 @@ import { ladder } from "./js/ladder.js";
 import { clubIcon, tag, who, whoTag, arc } from "./js/icons.js";
 import { createStore } from "./js/storage.js";
 import { readBagFile, bagFileText, bagFileName, skippedText, skippedCount, confirmText, plural } from "./js/bagfile.js";
+import { UNITS, toShown, toStored, inUnits, storedField } from "./js/units.js";
 
 const store = createStore();
 let clubs = store.loadClubs(), mode = "card", lastBest = "";
@@ -15,6 +16,12 @@ function setStatus(t, sticky) { clearTimeout(statusTimer); $("status").textConte
 
 const mark = (c) => prefs.icons ? clubIcon(c) : tag(c);
 const label = (c) => prefs.icons ? who(c) : whoTag(c);
+// The bag stays in meters; everything on screen is in the chosen units (ADR 0004).
+const unit = () => prefs.yards ? "yd" : "m";
+const shownBag = () => inUnits(clubs, unit());
+// The target as shown, in the chosen units. Like the bag, it's kept in meters (targetM),
+// so switching units back and forth gives back the same number.
+let targetM = null;
 function target() { const t = Math.round(Number($("target").value)); return t > 0 ? t : null; }
 
 /* ---------- Finder ---------- */
@@ -28,7 +35,7 @@ function renderChips(m, t) {
     const d = o.d === 0 ? "exact" : (o.d > 0 ? "+" : "−") + Math.abs(o.d);
     return `<div class="chip${i ? "" : " best"}${!i && bestKey !== lastBest ? " pulse" : ""}">
       <div class="cl">${esc(codeOf(o.c))} ${o.l}</div>
-      <div class="mv"><b>${o.v} m</b><span>${d}</span></div>
+      <div class="mv"><b>${o.v} ${unit()}</b><span>${d}</span></div>
       <div class="br">${esc(o.c.name || o.c.type)}</div></div>`;
   }).join("");
   lastBest = bestKey;
@@ -36,9 +43,9 @@ function renderChips(m, t) {
 
 /* ---------- Views ---------- */
 function renderCard() {
-  const view = $("view"), t = target(), opts = options(clubs), m = matches(opts, t);
+  const view = $("view"), t = target(), opts = options(shownBag()), m = matches(opts, t, prefs.tieShorter ? "shorter" : "longer");
   renderChips(m, t);
-  const vis = visible(clubs), hiddenCount = clubs.length - vis.length;
+  const vis = visible(shownBag()), hiddenCount = clubs.length - vis.length;
   if (!vis.length) {
     view.innerHTML = `<div class="empty"><strong>${clubs.length ? "No clubs to show" : "Bag is empty"}</strong>${clubs.length
       ? "Clubs show here once they're in the bag and have at least one distance."
@@ -57,13 +64,13 @@ function renderCard() {
     return `<div class="row${prefs.arc ? " has-arc" : ""}"><div class="nm">${mark(c)}${label(c)}</div>${cells}${prefs.arc ? arc(c, scale) : ""}</div>`;
   }).join("");
   view.style.setProperty("--n", sw.length);
-  view.innerHTML = `${ladder(opts, m, t)}
+  view.innerHTML = `${ladder(opts, m, t, unit())}
     <div class="cols"><span>Club</span>${sw.map(([, l]) => `<span>${l}</span>`).join("")}</div>${rows}
-    <div class="foot">Carry in meters, total below it. Columns appear once a club has a distance for that swing.${hiddenCount ? ` ${hiddenCount} club${hiddenCount > 1 ? "s" : ""} not shown (out of the bag or no distances).` : ""} <button data-manage>Edit clubs</button></div>`;
+    <div class="foot">Carry in ${UNITS[unit()].many}, total below it. Columns appear once a club has a distance for that swing.${hiddenCount ? ` ${hiddenCount} club${hiddenCount > 1 ? "s" : ""} not shown (out of the bag or no distances).` : ""} <button data-manage>Edit clubs</button></div>`;
 }
 
 function renderManage() {
-  const view = $("view"), list = sorted(clubs);
+  const view = $("view"), list = sorted(shownBag());
   view.innerHTML = `<div class="l-cap" style="margin:14px 0 4px">All clubs · tap one to edit</div>` +
     (list.length ? list.map(c => {
       const fc = num(c.fullCarry);
@@ -71,7 +78,7 @@ function renderManage() {
         ${mark(c)}
         <div class="info">${label(c)}</div>
         ${c.inBag === false ? `<span class="tag">Out of bag</span>` : ""}
-        <div class="meta">${fc !== null ? fc + " m" : "no distances"}</div><span class="chev" aria-hidden="true">›</span></div>`;
+        <div class="meta">${fc !== null ? fc + " " + unit() : "no distances"}</div><span class="chev" aria-hidden="true">›</span></div>`;
     }).join("") : `<div class="empty"><strong>Bag is empty</strong>Add your first club below.</div>`) +
     `<button class="add" data-add>+ Add club</button>`;
 }
@@ -99,12 +106,12 @@ function changeBag(fn) {
 /* ---------- Sheet ---------- */
 let sheetFor = null, lastFocus = null;
 function openSheet(id) {
-  const c = id ? clubs.find(x => x.id === id) : { type: nextType(clubs), name: "", inBag: true };
+  const c = id ? shownBag().find(x => x.id === id) : { type: nextType(clubs), name: "", inBag: true };
   if (!c) return;
   sheetFor = id || null; lastFocus = document.activeElement;
   const opts = TYPES.map(([t]) => `<option${t === c.type ? " selected" : ""}>${t}</option>`).join("");
   const grid = SWINGS.map(([k, l]) => `<div class="rl">${l}</div>` + ["Carry", "Total"].map(s =>
-    `<input type="number" inputmode="numeric" min="0" max="400" id="f-${k}${s}" aria-label="${l} ${s.toLowerCase()} in meters" placeholder="add" value="${num(c[k + s]) ?? ""}">`).join("")).join("");
+    `<input type="number" inputmode="numeric" min="0" max="400" id="f-${k}${s}" aria-label="${l} ${s.toLowerCase()} in ${UNITS[unit()].many}" placeholder="add" value="${num(c[k + s]) ?? ""}">`).join("")).join("");
   $("sheetRoot").innerHTML = `<div class="dim" data-close></div>
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title"><div class="sheet-in">
       <div class="grab"></div>
@@ -129,7 +136,11 @@ function closeSheet() { $("sheetRoot").innerHTML = ""; sheetFor = null; if (last
 
 function saveSheet() {
   const data = { type: $("f-type").value, name: $("f-name").value.trim(), inBag: $("f-inBag").checked };
-  for (const f of FIELDS) { const raw = $("f-" + f).value, n = Math.round(Number(raw)); data[f] = raw === "" || !(n > 0) ? null : Math.min(n, 400); }
+  const before = clubs.find(x => x.id === sheetFor) || {};
+  for (const f of FIELDS) {
+    const raw = $("f-" + f).value, n = Math.round(Number(raw));
+    data[f] = storedField(raw === "" || !(n > 0) ? null : Math.min(n, 400), before[f], unit());
+  }
   $("sheetErr").textContent = "";
   try {
     changeBag(() => sheetFor ? store.updateClub(sheetFor, data) : store.addClub(data));
@@ -180,12 +191,17 @@ function applySun(on) { if (on) document.documentElement.dataset.sun = "1"; else
 function setPref(k, v) {
   prefs[k] = v; store.setPref(k, v);
   if (k === "sun") applySun(v);
+  if (k === "yards") applyUnits();
   render(); syncSettings();
 }
 function syncSettings() {
   if (!$("set-icons")) return;
   $("seg-dark").setAttribute("aria-pressed", prefs.sun ? "false" : "true");
   $("seg-sun").setAttribute("aria-pressed", prefs.sun ? "true" : "false");
+  $("seg-m").setAttribute("aria-pressed", prefs.yards ? "false" : "true");
+  $("seg-yd").setAttribute("aria-pressed", prefs.yards ? "true" : "false");
+  $("seg-longer").setAttribute("aria-pressed", prefs.tieShorter ? "false" : "true");
+  $("seg-shorter").setAttribute("aria-pressed", prefs.tieShorter ? "true" : "false");
   $("set-icons").checked = prefs.icons; $("set-arc").checked = prefs.arc;
 }
 function openSettings() {
@@ -196,23 +212,32 @@ function openSettings() {
       <div class="sh-h"><div class="k" id="set-title">Settings</div><button class="x" data-close aria-label="Close">×</button></div>
       <div class="set"><div class="l"><b>Screen</b><span>Sun is high contrast for bright daylight</span></div>
         <div class="seg" role="group" aria-label="Screen"><button id="seg-dark">Dark</button><button id="seg-sun">Sun</button></div></div>
+      <div class="set"><div class="l"><b>Units</b><span>Your bag is shown and typed in these</span></div>
+        <div class="seg" role="group" aria-label="Units"><button id="seg-m">Meters</button><button id="seg-yd">Yards</button></div></div>
+      <div class="set"><div class="l"><b>On a tie</b><span>Which club comes first when two are equally close</span></div>
+        <div class="seg" role="group" aria-label="On a tie"><button id="seg-longer">Longer</button><button id="seg-shorter">Shorter</button></div></div>
       <div class="set"><div class="l"><b>Club icons</b><span>Off shows coloured club tiles instead</span></div>
         <label class="sw"><input type="checkbox" id="set-icons" aria-label="Club icons"><i></i></label></div>
       <div class="set"><div class="l"><b>Ball-flight arc</b><span>A line under each club: carry, then dotted roll to total</span></div>
         <label class="sw"><input type="checkbox" id="set-arc" aria-label="Ball-flight arc"><i></i></label></div>
       ${bagSection()}
-      <div class="saved-note">Saved on this phone.</div>
+      <div class="saved-note">Settings are saved on this phone.</div>
     </div></div>`;
   syncSettings();
   $("seg-dark").addEventListener("click", () => setPref("sun", false));
   $("seg-sun").addEventListener("click", () => setPref("sun", true));
+  $("seg-m").addEventListener("click", () => setPref("yards", false));
+  $("seg-yd").addEventListener("click", () => setPref("yards", true));
+  $("seg-longer").addEventListener("click", () => setPref("tieShorter", false));
+  $("seg-shorter").addEventListener("click", () => setPref("tieShorter", true));
   $("set-icons").addEventListener("change", (e) => setPref("icons", e.target.checked));
   $("set-arc").addEventListener("change", (e) => setPref("arc", e.target.checked));
   wireBagSection();
   $("seg-dark").focus();
 }
 $("settingsBtn").addEventListener("click", openSettings);
-const prefs = { sun: store.pref("sun", false), icons: store.pref("icons", true), arc: store.pref("arc", false) };
+const prefs = { sun: store.pref("sun", false), yards: store.pref("yards", false), tieShorter: store.pref("tieShorter", false),
+  icons: store.pref("icons", true), arc: store.pref("arc", false) };
 applySun(prefs.sun);
 
 /* ---------- Your bag: Export bag and Import bag (ADR 0001) ---------- */
@@ -271,21 +296,34 @@ function wireBagSection() {
 // Asks the browser to keep the bag when it clears site data. It may say no; the app works either way.
 if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(p => p || navigator.storage.persist()).catch(() => {});
 
+// The distance bar's unit labels, and the target redrawn in the new units.
+function applyUnits() {
+  const u = UNITS[unit()];
+  $("tgt-unit").textContent = u.short;
+  $("target").setAttribute("aria-label", "Distance to pin in " + u.many);
+  document.querySelectorAll("[data-step]").forEach(b => {
+    const n = Number(b.dataset.step);
+    b.setAttribute("aria-label", `${n < 0 ? "Minus" : "Plus"} ${Math.abs(n)} ${Math.abs(n) === 1 ? u.one : u.many}`);
+  });
+  $("target").value = toShown(targetM, unit()) ?? "";
+}
+
 function setTarget(v) {
   $("target").value = v ? v : "";
-  store.saveTarget(v);
+  targetM = toStored(v, unit());
+  store.saveTarget(targetM);
   renderCard();
 }
 document.querySelectorAll("[data-step]").forEach(b => b.addEventListener("click", () => {
   const t = target();
-  setTarget(t ? Math.max(1, Math.min(400, t + Number(b.dataset.step))) : baseDistance(clubs));
+  setTarget(t ? Math.max(1, Math.min(400, t + Number(b.dataset.step))) : baseDistance(shownBag()));
 }));
 $("target").addEventListener("input", () => setTarget(target()));
 $("target").addEventListener("blur", () => { if ($("target").value) $("target").value = target() ?? ""; });
 $("clearBtn").addEventListener("click", () => setTarget(null));
 try { new ResizeObserver(() => document.documentElement.style.setProperty("--dock-h", $("finder").offsetHeight + "px")).observe($("finder")); } catch {}
-const savedTarget = store.loadTarget();
-if (savedTarget) $("target").value = savedTarget;
+targetM = store.loadTarget();
+applyUnits();
 
 render();
 

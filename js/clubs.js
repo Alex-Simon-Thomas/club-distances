@@ -33,10 +33,12 @@ export function options(clubs) {
   for (const c of visible(clubs)) for (const [k, l] of SWINGS) { const v = num(c[k + "Carry"]); if (v !== null) out.push({ c, k, l, v }); }
   return out;
 }
-// The 3 suggestions closest to the target by carry. On a tie, the longer option comes first.
-export function matches(opts, t) {
+// The 3 suggestions closest to the target by carry. On a tie, the longer option comes first,
+// or the shorter one when the tie setting is "shorter".
+export function matches(opts, t, tie = "longer") {
   if (!t) return [];
-  return opts.map(o => ({ ...o, d: o.v - t })).sort((a, b) => Math.abs(a.d) - Math.abs(b.d) || b.d - a.d).slice(0, 3);
+  const dir = tie === "shorter" ? 1 : -1;
+  return opts.map(o => ({ ...o, d: o.v - t })).sort((a, b) => Math.abs(a.d) - Math.abs(b.d) || dir * (a.d - b.d)).slice(0, 3);
 }
 // Mid-bag carry: the median full carry, rounded to 5. The first ± step starts here.
 export function baseDistance(clubs) {

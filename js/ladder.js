@@ -19,7 +19,7 @@ export function groupLabels(labelled, lo, hi) {
   return clusters;
 }
 
-export function ladder(opts, m, t) {
+export function ladder(opts, m, t, unit = "m") {
   if (!opts.length) return "";
   const { lo, hi, step } = ladderRange(opts, t);
   const items = opts.filter(o => o.v >= lo && o.v <= hi);
@@ -47,5 +47,5 @@ export function ladder(opts, m, t) {
     h += `<span class="l-lab ${st}" style="left:${LX}%;top:${s.top}px">${lbl}</span>`;
   });
   if (t) h += `<span class="l-flag" style="left:${x(t)}%"></span>`;
-  return `<div class="ladder-box"><div class="l-cap">${t ? `Around ${t} m` : "Your bag by carry"}</div><div class="ladder" aria-hidden="true">${h}</div></div>`;
+  return `<div class="ladder-box"><div class="l-cap">${t ? `Around ${t} ${unit}` : "Your bag by carry"}</div><div class="ladder" aria-hidden="true">${h}</div></div>`;
 }

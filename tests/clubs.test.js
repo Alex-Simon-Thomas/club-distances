@@ -31,6 +31,21 @@ test("on a tie, the longer option comes first", () => {
   assert.deepEqual(matches(options(bag), 130).map(label), ["7 Iron full 135", "8 Iron full 125"]);
 });
 
+test("on a tie with the tie setting Longer, the longer option comes first", () => {
+  const bag = [club("8 Iron", { fullCarry: 125 }), club("7 Iron", { fullCarry: 135 })];
+  assert.deepEqual(matches(options(bag), 130, "longer").map(label), ["7 Iron full 135", "8 Iron full 125"]);
+});
+
+test("on a tie with the tie setting Shorter, the shorter option comes first", () => {
+  const bag = [club("7 Iron", { fullCarry: 135 }), club("8 Iron", { fullCarry: 125 })];
+  assert.deepEqual(matches(options(bag), 130, "shorter").map(label), ["8 Iron full 125", "7 Iron full 135"]);
+});
+
+test("the tie setting only breaks ties: a closer option still wins", () => {
+  const bag = [club("7 Iron", { fullCarry: 133 }), club("8 Iron", { fullCarry: 125 })];
+  assert.deepEqual(matches(options(bag), 130, "shorter").map(label), ["7 Iron full 133", "8 Iron full 125"]);
+});
+
 test("only clubs on the card are matched: out of the bag is left out", () => {
   const bag = [club("7 Iron", { fullCarry: 130 }, { inBag: false }), club("8 Iron", { fullCarry: 120 })];
   assert.deepEqual(matches(options(bag), 130).map(label), ["8 Iron full 120"]);

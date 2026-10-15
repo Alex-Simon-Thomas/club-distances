@@ -10,6 +10,7 @@ self.APP_FILES = [
   "js/icons.js",
   "js/ladder.js",
   "js/storage.js",
+  "js/units.js",
   "fonts/oxanium-latin.woff2",
   "fonts/ibm-plex-sans-latin.woff2",
   "fonts/OFL-Oxanium.txt",
