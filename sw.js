@@ -4,7 +4,7 @@ importScripts("files.js");
 
 // Bump on every release: a changed sw.js is what makes an installed app fetch the new files,
 // and the new cache name lets the old one be cleared once the new version takes over.
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 const CACHE = `club-distances-${VERSION}`;
 
 // Every network read skips the browser's HTTP cache (GitHub Pages lets it keep files for

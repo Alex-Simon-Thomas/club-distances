@@ -7,6 +7,8 @@ self.APP_FILES = [
   "app.js",
   "js/bagfile.js",
   "js/clubs.js",
+  "js/detail.js",
+  "js/detailview.js",
   "js/icons.js",
   "js/install.js",
   "js/ladder.js",

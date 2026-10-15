@@ -7,6 +7,7 @@ import { createStore } from "./js/storage.js";
 import { readBagFile, bagFileText, bagFileName, skippedText, skippedCount, confirmText, plural } from "./js/bagfile.js";
 import { UNITS, toShown, toStored, inUnits, storedField } from "./js/units.js";
 import { sampleBag } from "./js/sample.js";
+import { detailHTML } from "./js/detailview.js";
 import { INSTALL_HINT, isInstalled, showInstallHint } from "./js/install.js";
 
 const store = createStore();
@@ -64,7 +65,8 @@ function renderCard() {
       if (cv === null && tv === null) return `<div class="cell e"><div class="c">·</div></div>`;
       return `<div class="cell ${hit.get(c.id + k) || ""}"><div class="c">${cv ?? "–"}</div>${tv !== null ? `<div class="t">${tv} tot</div>` : ""}</div>`;
     }).join("");
-    return `<div class="row${prefs.arc ? " has-arc" : ""}"><div class="nm">${mark(c)}${label(c)}</div>${cells}${prefs.arc ? arc(c, scale) : ""}</div>`;
+    // Tapping a row opens its club detail (ADR 0006).
+    return `<div class="row${prefs.arc ? " has-arc" : ""}" role="button" tabindex="0" data-detail="${esc(c.id)}" aria-label="${esc(c.type + (c.name ? ", " + c.name : "") + ", details")}"><div class="nm">${mark(c)}${label(c)}</div>${cells}${prefs.arc ? arc(c, scale) : ""}</div>`;
   }).join("");
   view.style.setProperty("--n", sw.length);
   view.innerHTML = `${ladder(opts, m, t, unit())}
@@ -150,7 +152,50 @@ function openSheet(id) {
   $("saveBtn").addEventListener("click", saveSheet);
   if (id) $("delBtn").addEventListener("click", deleteClub);
 }
-function closeSheet() { $("sheetRoot").innerHTML = ""; sheetFor = null; if (lastFocus && lastFocus.focus && lastFocus.isConnected) lastFocus.focus(); }
+// Closing the editor it opened returns to the club detail, updated; when the club has left the card
+// (deleted, or out of the bag) it returns to the card. Closing the detail puts focus back on its row.
+function closeSheet() {
+  $("sheetRoot").innerHTML = ""; sheetFor = null;
+  if (editFromDetail) {
+    editFromDetail = false;
+    if (visible(shownBag()).some(c => c.id === detailFor)) return openDetail(detailFor);
+  }
+  const row = detailFor && document.querySelector(`[data-detail="${CSS.escape(detailFor)}"]`);
+  detailFor = null;
+  if (row) return row.focus();
+  if (lastFocus && lastFocus.focus && lastFocus.isConnected) lastFocus.focus();
+}
+
+/* ---------- Club detail (ADR 0006): read-only, with Edit opening the club editor ---------- */
+let detailFor = null, editFromDetail = false;
+function openDetail(id) {
+  const shown = shownBag(), c = visible(shown).find(x => x.id === id);
+  if (!c) return;
+  detailFor = id;
+  const t = target(), opts = options(shown), m = matches(opts, t, prefs.tieShorter ? "shorter" : "longer");
+  $("sheetRoot").innerHTML = `<div class="dim" data-close></div>
+    <div class="sheet tall" role="dialog" aria-modal="true" aria-labelledby="dt-title"><div class="sheet-in">
+      <div class="grab"></div>${detailHTML({ c, clubs: shown, opts, m, t, unit: unit(), icons: prefs.icons })}
+    </div></div>`;
+  swipeToClose($("sheetRoot").querySelector(".sheet"));
+  $("sheetRoot").querySelector(".dt-h .x").focus();
+}
+function editFromDetailSheet() { editFromDetail = true; openSheet(detailFor); }
+// A swipe down from the top of the sheet closes it; anywhere else the content scrolls as usual.
+function swipeToClose(sheet) {
+  let y0 = null, dy = 0;
+  sheet.addEventListener("touchstart", (e) => { y0 = sheet.scrollTop <= 0 ? e.touches[0].clientY : null; dy = 0; }, { passive: true });
+  sheet.addEventListener("touchmove", (e) => {
+    if (y0 === null) return;
+    dy = Math.max(0, e.touches[0].clientY - y0);
+    sheet.style.transform = dy ? `translateY(${dy}px)` : "";
+  }, { passive: true });
+  sheet.addEventListener("touchend", () => {
+    if (y0 === null) return;
+    y0 = null;
+    if (dy > 90) closeSheet(); else sheet.style.transform = "";
+  });
+}
 
 function saveSheet() {
   const data = { type: $("f-type").value, name: $("f-name").value.trim(), inBag: $("f-inBag").checked };
@@ -199,11 +244,14 @@ document.addEventListener("click", (e) => {
   if (t.closest("[data-hint-close]")) { store.setPref("installHintDismissed", true); return renderBanners(); }
   // Import a bag file uses Settings' Import bag, so the confirm and messages are the same.
   if (t.closest("[data-import]")) { openSettings(); return $("importFile").click(); }
+  if (t.closest("[data-detail-edit]")) return editFromDetailSheet();
+  const d = t.closest("[data-detail]"); if (d) return openDetail(d.dataset.detail);
   const o = t.closest("[data-open]"); if (o) return openSheet(o.dataset.open);
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("sheetRoot").innerHTML) closeSheet();
   if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-open]")) { e.preventDefault(); openSheet(e.target.dataset.open); }
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-detail]")) { e.preventDefault(); openDetail(e.target.dataset.detail); }
 });
 $("manageBtn").addEventListener("click", () => setMode(mode === "manage" ? "card" : "manage"));
 // Another tab of the app changed the bag: show the same bag here.

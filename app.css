@@ -212,8 +212,68 @@ h1 span { color: var(--amber); }
 .save:disabled { opacity: .5; }
 .err { color: var(--danger); font-size: 13px; margin-top: 8px; min-height: 1em; }
 
+/* Club detail: a tall sheet of sections (ADR 0006) */
+.row[data-detail] { cursor: pointer; }
+.row[data-detail]:hover { background: var(--line-soft); }
+.sheet.tall { height: 92%; overscroll-behavior: contain; animation: sheet-up .22s ease-out; }
+@keyframes sheet-up { from { transform: translateY(100%); } to { transform: none; } }
+.dt-h { align-items: center; }
+.dt-h .k { font-size: 24px; }
+.dt-who { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.dt-who .clubicon, .dt-who .tag-c { width: 52px; height: 52px; }
+.dt-acts { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
+.dt-acts .pill { height: 36px; }
+.dt-sec { padding: 14px 0 6px; border-top: 1px solid var(--line-soft); }
+.dt-sec .l-cap { margin-bottom: 8px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Flight view: pill and pin above the arcs, axis numbers under the line, swing labels below them */
+.fv { position: relative; padding-top: 6px; margin: 0 4px; }
+.fv.has-pin { padding-top: 30px; }
+.fv-arcs { display: block; width: 100%; height: 112px; overflow: visible; }
+.fv .arc-tq { opacity: var(--arc-tq); }
+.fv .arc-half { opacity: var(--arc-half); }
+.fv-axis { position: absolute; left: 0; right: 0; bottom: calc(18px + 44px); border-top: 1px solid var(--line); }
+.fv-dot { position: absolute; bottom: calc(18px + 44px); width: 9px; height: 9px; border-radius: 50%; transform: translate(-50%, 50%); box-shadow: 0 0 0 2px var(--panel); }
+.fv-dot.arc-tq { width: 7px; height: 7px; }
+.fv-dot.arc-half { width: 6px; height: 6px; }
+.fv-nums { position: relative; height: 18px; }
+.fv-num { position: absolute; top: 3px; font-size: 10px; color: var(--muted); transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.fv-labs { position: relative; height: 44px; }
+.fv-ticks { position: absolute; left: 0; top: -18px; width: 100%; height: 42px; overflow: visible; pointer-events: none; }
+.fv-ticks line { opacity: .7; }
+.fv-lab { position: absolute; top: 4px; transform: translateX(-50%); font: 700 12px/1 var(--display); white-space: nowrap; padding: 2px 4px; border-radius: 5px; background: var(--panel); font-variant-numeric: tabular-nums; }
+.fv-lab.l2 { top: 24px; }
+.fv-pill { position: absolute; top: 0; transform: translateX(-50%); background: var(--amber); color: var(--amber-ink); font: 700 13px/1 var(--display); padding: 4px 9px; border-radius: 999px; font-variant-numeric: tabular-nums; z-index: 1; }
+.fv-flag { position: absolute; top: 24px; bottom: calc(18px + 44px); width: 2px; background: var(--amber); transform: translateX(-50%); box-shadow: 0 0 10px var(--glow); }
+.fv-flag::after { content: ""; position: absolute; top: 0; left: 2px; border-left: 13px solid var(--amber); border-top: 6px solid transparent; border-bottom: 6px solid transparent; }
+
+/* Swing table: suggestions marked as on the card */
+.dt-tab, .dt-tab thead, .dt-tab tbody { display: block; font-variant-numeric: tabular-nums; }
+.dt-tab tr { display: grid; grid-template-columns: 3em repeat(var(--cols, 4), minmax(0, 1fr)); align-items: center; border-radius: 9px; margin-bottom: 3px; }
+.dt-tab th { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; text-align: center; padding: 0 2px 2px; }
+.dt-tab th:first-child { text-align: left; }
+.dt-tab tbody th { font: 700 17px/1 var(--display); color: var(--ink); text-align: left; letter-spacing: 0; text-transform: none; padding: 8px 6px; }
+.dt-tab td { text-align: center; font: 700 19px/1 var(--display); color: var(--num); padding: 8px 2px; }
+.dt-tab tr.hit { background: var(--amber-soft); }
+.dt-tab tr.hit.best { background: var(--amber); }
+.dt-tab tr.hit.best > * { color: var(--amber-ink); }
+
+/* Gaps */
+.dt-gap { font: 600 17px/1.2 var(--display); padding: 4px 0; font-variant-numeric: tabular-nums; color: var(--muted); }
+.dt-gap b { color: var(--ink); }
+.dt-sep { margin: 0 4px; }
+
+/* In the bag: a mini ladder with this club picked out */
+.ml { position: relative; height: 22px; }
+.ml-axis { position: absolute; left: 0; right: 0; top: 11px; border-top: 1px solid var(--line); }
+.ml-dot { position: absolute; top: 11px; width: 7px; height: 7px; border-radius: 50%; transform: translate(-50%, -50%); opacity: .3; }
+.ml-dot.own { opacity: 1; width: 10px; height: 10px; box-shadow: 0 0 0 2px var(--panel); }
+.ml-dot.own.full { width: 15px; height: 15px; }
+.ml-ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; }
+
 /* Toast */
 .toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 14px; background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 14px; font-size: 14px; max-width: calc(100% - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .toast button { border: 0; background: none; color: var(--amber); font-weight: 700; padding: 2px 4px; }
 :root[data-sun="1"] .toast button { color: #ffd166; }
-@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } .sw i, .sw i::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .pulse, .sheet.tall { animation: none; } .sw i, .sw i::after { transition: none; } }
