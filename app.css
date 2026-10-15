@@ -150,6 +150,17 @@ h1 span { color: var(--amber); }
 .empty { padding: 48px 8px; text-align: center; color: var(--muted); }
 .empty strong { display: block; font: 700 20px var(--display); color: var(--ink); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
 .add { display: block; width: 100%; margin-top: 14px; border: 1px dashed var(--faint); background: transparent; border-radius: 14px; padding: 14px; font-weight: 600; color: var(--ink); }
+.first-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+
+/* Banners: the sample bag strip and the install hint */
+.strip { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; padding: 8px 12px; border: 1px solid var(--amber); background: var(--amber-soft); border-radius: 12px; font-size: 14px; }
+.strip b { font-weight: 700; }
+.strip span { color: var(--muted); }
+.strip button { border: 0; background: none; padding: 2px 0; color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.install { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 8px; padding: 10px 10px 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+.install p { margin: 0; flex: 1; font-size: 13px; color: var(--muted); }
+.install p b { color: var(--ink); }
+.install .x { width: 30px; height: 30px; font-size: 18px; flex: 0 0 auto; }
 
 /* Manage list */
 .mrow { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--line-soft); cursor: pointer; }

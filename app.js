@@ -6,6 +6,8 @@ import { clubIcon, tag, who, whoTag, arc } from "./js/icons.js";
 import { createStore } from "./js/storage.js";
 import { readBagFile, bagFileText, bagFileName, skippedText, skippedCount, confirmText, plural } from "./js/bagfile.js";
 import { UNITS, toShown, toStored, inUnits, storedField } from "./js/units.js";
+import { sampleBag } from "./js/sample.js";
+import { INSTALL_HINT, isInstalled, showInstallHint } from "./js/install.js";
 
 const store = createStore();
 let clubs = store.loadClubs(), mode = "card", lastBest = "";
@@ -49,7 +51,8 @@ function renderCard() {
   if (!vis.length) {
     view.innerHTML = `<div class="empty"><strong>${clubs.length ? "No clubs to show" : "Bag is empty"}</strong>${clubs.length
       ? "Clubs show here once they're in the bag and have at least one distance."
-      : "Add your first club and its Map My Bag carry to get started."}</div><button class="add" data-add>+ Add club</button>`;
+      : "Add your first club and its Map My Bag carry to get started."}</div><button class="add" data-add>+ Add club</button>${clubs.length ? "" : `
+      <div class="first-acts"><button class="bag-btn" data-import>Import a bag file</button><button class="bag-btn" data-sample>Try a sample bag</button></div>`}`;
     return;
   }
   const sw = activeSwings(vis);
@@ -83,7 +86,22 @@ function renderManage() {
     `<button class="add" data-add>+ Add club</button>`;
 }
 
+/* ---------- Banners: the sample bag strip and the install hint ---------- */
+function renderBanners() {
+  const sample = store.isSample() ? `<div class="strip"><b>Sample bag</b><span aria-hidden="true">·</span><button data-clear-sample>Clear</button></div>` : "";
+  const hint = showInstallHint({ installed: isInstalled(), dismissed: store.pref("installHintDismissed", false) })
+    ? `<div class="install" role="note"><p><b>${INSTALL_HINT.lead}</b> ${INSTALL_HINT.text}</p><button class="x" data-hint-close aria-label="Dismiss install hint">×</button></div>` : "";
+  $("banners").innerHTML = sample + hint;
+}
+function loadSampleBag() {
+  try { changeBag(() => store.loadSample(sampleBag())); setStatus("Sample bag loaded"); } catch { setStatus("Couldn't save on this phone.", true); }
+}
+function clearSampleBag() {
+  try { changeBag(() => store.replaceClubs([])); setStatus("Sample bag cleared"); } catch { setStatus("Couldn't clear the bag.", true); }
+}
+
 function render() {
+  renderBanners();
   $("finder").hidden = mode === "manage";
   mode === "manage" ? (renderChips([], null), renderManage()) : renderCard();
 }
@@ -176,6 +194,11 @@ document.addEventListener("click", (e) => {
   if (t.closest("[data-close]")) return closeSheet();
   if (t.closest("[data-add]")) return openSheet(null);
   if (t.closest("[data-manage]")) return setMode("manage");
+  if (t.closest("[data-sample]")) return loadSampleBag();
+  if (t.closest("[data-clear-sample]")) return clearSampleBag();
+  if (t.closest("[data-hint-close]")) { store.setPref("installHintDismissed", true); return renderBanners(); }
+  // Import a bag file uses Settings' Import bag, so the confirm and messages are the same.
+  if (t.closest("[data-import]")) { openSettings(); return $("importFile").click(); }
   const o = t.closest("[data-open]"); if (o) return openSheet(o.dataset.open);
 });
 document.addEventListener("keydown", (e) => {

@@ -4,6 +4,7 @@ import { FIELDS } from "./clubs.js";
 
 export const TARGET_TTL = 5 * 60 * 60 * 1000; // a distance is kept for one round (5 hours)
 const CLUBS_KEY = "bag-clubs";
+const SAMPLE_KEY = "bag-sample";
 
 // A random 20-character id, in the style of the prototype's ids.
 export function newId() {
@@ -26,7 +27,8 @@ export function createStore(storage = globalThis.localStorage) {
     try { const list = JSON.parse(get(CLUBS_KEY) || "[]"); return Array.isArray(list) ? list : []; } catch { return []; }
   }
   // Saving the bag throws when the browser refuses, so the editor can say so.
-  const saveClubs = (list) => storage.setItem(CLUBS_KEY, JSON.stringify(list.map(clubRecord)));
+  // Any change to the bag means it's no longer the untouched sample bag.
+  const saveClubs = (list) => { storage.setItem(CLUBS_KEY, JSON.stringify(list.map(clubRecord))); set(SAMPLE_KEY, ""); };
 
   return {
     loadClubs,
@@ -49,6 +51,10 @@ export function createStore(storage = globalThis.localStorage) {
     },
     // Import bag: the file's clubs replace the whole bag.
     replaceClubs(list) { saveClubs(list); },
+
+    // The sample bag stays marked as a sample until it's cleared or any club is edited.
+    loadSample(list) { saveClubs(list); set(SAMPLE_KEY, "1"); },
+    isSample() { return get(SAMPLE_KEY) === "1" && loadClubs().length > 0; },
 
     // When Export bag last ran, or null if never.
     lastExport() { const v = Number(get("bag-last-export")); return v > 0 ? v : null; },
